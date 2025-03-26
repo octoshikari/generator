@@ -177,15 +177,24 @@ fn build_fields(
                         .iter()
                         .find(|it| it.identifier.name == val.type_.name);
                     if let Some(nested_field) = nested_filed {
-                        let nested_name = format!("{}{}", parent, nested_field.identifier.name.to_case(Case::Pascal));
+                        let nested_name = format!(
+                            "{}{}",
+                            parent,
+                            nested_field.identifier.name.to_case(Case::Pascal)
+                        );
 
-                        if already_created.contains_key::<String>(&nested_field.clone().identifier.url.into()) {
+                        if already_created
+                            .contains_key::<String>(&nested_field.clone().identifier.url.into())
+                        {
                             field_type = already_created
                                 .get::<String>(&nested_field.clone().identifier.url.into())
                                 .unwrap()
                                 .into();
                         } else {
-                            already_created.insert(nested_field.clone().identifier.url.into(), nested_name.clone());
+                            already_created.insert(
+                                nested_field.clone().identifier.url.into(),
+                                nested_name.clone(),
+                            );
 
                             let sub_fields = build_fields(
                                 file,
@@ -194,10 +203,12 @@ fn build_fields(
                                 nested_name.clone(),
                                 already_created,
                             );
-                            file.write(format!("export interface {} {{\n", nested_name).as_bytes()).expect("unable to write file");
-                            file.write(sub_fields.join("\n").as_bytes()).expect("unable to write file");
-                            file.write("\n}\n\n".as_bytes()).expect("unable to write file");
-
+                            file.write(format!("export interface {} {{\n", nested_name).as_bytes())
+                                .expect("unable to write file");
+                            file.write(sub_fields.join("\n").as_bytes())
+                                .expect("unable to write file");
+                            file.write("\n}\n\n".as_bytes())
+                                .expect("unable to write file");
 
                             field_type = nested_name;
                         }
@@ -269,7 +280,7 @@ fn process_complex_type(
     identifier: TypeSchemaForResourceComplexTypeLogicalIdentifier,
     nested: Vec<TypeSchemaForResourceComplexTypeLogicalNestedItem>,
 ) {
-    let name = match identifier {
+    let name = match identifier.clone() {
         TypeSchemaForResourceComplexTypeLogicalIdentifier::Variant0 {
             kind,
             name,
@@ -305,7 +316,7 @@ fn process_complex_type(
             file.write(
                 format!("import type {{ {} }} from './{}';\n", value.join(", "), key).as_bytes(),
             )
-                .expect("unable to write to file");
+            .expect("unable to write to file");
         }
         file.write("\n".as_bytes())
             .expect("unable to write to file");
@@ -336,8 +347,15 @@ fn process_complex_type(
     ];
     file.write(interface.join(" ").as_bytes())
         .expect("unable to write to file");
-    file.write(format!("resourceType: '{}';\n", name).as_bytes())
-        .expect("unable to write to file");
+    let is_resource = match identifier {
+        TypeSchemaForResourceComplexTypeLogicalIdentifier::Variant0 { .. } => true,
+        _ => false,
+    };
+    if is_resource {
+        file.write(format!("resourceType: '{}';\n", name).as_bytes())
+            .expect("unable to write to file");
+    }
+
     file.write(type_fields.join("\n").as_bytes())
         .expect("unable to write to file");
     file.write("\n}\n".as_bytes())
